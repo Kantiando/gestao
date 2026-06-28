@@ -10,10 +10,13 @@ export function apiBaseUrl() {
 }
 
 export async function api(path, options = {}) {
-  const response = await fetch(apiBaseUrl() + path, {
-    headers: { "Content-Type": "application/json" },
-    ...options,
-  });
+  const config = { ...options };
+
+  if (config.body) {
+    config.headers = { "Content-Type": "application/json", ...(config.headers || {}) };
+  }
+
+  const response = await fetch(apiBaseUrl() + path, config);
 
   if (!response.ok) {
     throw new Error(String(response.status) + " em " + apiBaseUrl() + path);
