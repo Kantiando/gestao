@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 
 const competencia = "2025-06";
+const dataInicio = "2025-06-01";
+const dataFim = "2025-06-30";
 
 function apiBaseUrl() {
   if (typeof window !== "undefined" && window.location.hostname.includes("onrender.com")) {
@@ -28,6 +30,7 @@ export default function App() {
   const [empresas, setEmpresas] = useState([]);
   const [empresaId, setEmpresaId] = useState("");
   const [consolidado, setConsolidado] = useState(null);
+  const [fluxoConsolidado, setFluxoConsolidado] = useState(null);
   const [dashboard, setDashboard] = useState(null);
   const [planoContas, setPlanoContas] = useState([]);
   const [lancamentos, setLancamentos] = useState([]);
@@ -38,12 +41,14 @@ export default function App() {
   useEffect(() => {
     async function load() {
       try {
-        const [empresasData, dreData] = await Promise.all([
+        const [empresasData, dreData, fluxoData] = await Promise.all([
           request("/empresas"),
           request(`/dre/consolidado?competencia=${competencia}`),
+          request(`/fluxo-caixa/consolidado?data_inicio=${dataInicio}&data_fim=${dataFim}`),
         ]);
         setEmpresas(empresasData);
         setConsolidado(dreData);
+        setFluxoConsolidado(fluxoData);
         if (empresasData[0]) setEmpresaId(empresasData[0].id);
       } catch (error) {
         setErro("Backend não conectado. Rode o FastAPI em http://localhost:8000.");
@@ -72,6 +77,7 @@ export default function App() {
   }, [empresaId]);
 
   const dreEmpresa = dashboard?.dre;
+  const fluxoEmpresa = dashboard?.fluxo_caixa;
 
   return (
     <div className="app">
@@ -86,6 +92,7 @@ export default function App() {
 
         <button className={view === "geral" ? "active" : ""} onClick={() => setView("geral")}>Visão Geral</button>
         <button className={view === "empresa" ? "active" : ""} onClick={() => setView("empresa")}>Empresa</button>
+        <button className={view === "fluxo" ? "active" : ""} onClick={() => setView("fluxo")}>Fluxo de Caixa</button>
         <button className={view === "dre" ? "active" : ""} onClick={() => setView("dre")}>DRE</button>
         <button className={view === "plano" ? "active" : ""} onClick={() => setView("plano")}>Plano de Contas</button>
         <button className={view === "metas" ? "active" : ""} onClick={() => setView("metas")}>Metas</button>
@@ -98,15 +105,16 @@ export default function App() {
 
       <main>
         <header>
-          <span>Competência {competencia}</span>
+          <span>Competência {competencia} · Caixa {dataInicio} até {dataFim}</span>
           <h1>{titulo(view, empresaAtual)}</h1>
           <p>Core inicial sem login, sem Supabase e sem variáveis de ambiente.</p>
         </header>
 
         {erro ? <div className="erro">{erro}</div> : null}
 
-        {view === "geral" && <Resumo dre={consolidado} empresas={empresas} />}
-        {view === "empresa" && <Empresa dre={dreEmpresa} lancamentos={lancamentos} />}
+        {view === "geral" && <Resumo dre={consolidado} fluxo={fluxoConsolidado} empresas={empresas} />}
+        {view === "empresa" && <Empresa dre={dreEmpresa} fluxo={fluxoEmpresa} lancamentos={lancamentos} />}
+        {view === "fluxo" && <FluxoCaixa fluxo={fluxoEmpresa} />}
         {view === "dre" && <Dre dre={dreEmpresa} />}
         {view === "plano" && <Plano contas={planoContas} />}
         {view === "metas" && <Metas metas={dashboard?.metas || []} />}
@@ -120,6 +128,7 @@ function titulo(view, empresa) {
   return {
     geral: "Visão geral da holding",
     empresa: `${nome} - Dashboard`,
+    fluxo: `${nome} - Fluxo de caixa`,
     dre: `${nome} - DRE gerencial`,
     plano: `${nome} - Plano de contas`,
     metas: `${nome} - Metas`,
@@ -130,12 +139,16 @@ function Card({ label, value, hint }) {
   return <article className="card"><span>{label}</span><strong>{value}</strong>{hint && <small>{hint}</small>}</article>;
 }
 
-function Resumo({ dre, empresas }) {
-  return <section className="grid"><Card label="Receita total" value={money(dre?.receita_bruta)} hint="consolidado" /><Card label="Custos variáveis" value={money(dre?.custos_variaveis)} /><Card label="Lucro líquido" value={money(dre?.lucro_liquido)} /><Card label="Margem líquida" value={percent(dre?.margem_liquida_percentual)} /><div className="panel"><h2>Empresas</h2>{empresas.map((empresa) => <p key={empresa.id}>{empresa.nome}</p>)}</div></section>;
+function Resumo({ dre, fluxo, empresas }) {
+  return <section className="grid"><Card label="Receita total" value={money(dre?.receita_bruta)} hint="DRE consolidada" /><Card label="Entradas de caixa" value={money(fluxo?.entradas)} hint="caixa consolidado" /><Card label="Saídas de caixa" value={money(fluxo?.saidas)} /><Card label="Saldo de caixa" value={money(fluxo?.saldo_periodo)} /><Card label="Lucro líquido" value={money(dre?.lucro_liquido)} /><Card label="Margem líquida" value={percent(dre?.margem_liquida_percentual)} /><div className="panel"><h2>Empresas</h2>{empresas.map((empresa) => <p key={empresa.id}>{empresa.nome}</p>)}</div></section>;
 }
 
-function Empresa({ dre, lancamentos }) {
-  return <section className="grid"><Card label="Receita" value={money(dre?.receita_bruta)} /><Card label="Despesas + custos" value={money((dre?.custos_variaveis || 0) + (dre?.despesas_operacionais || 0))} /><Card label="Lucro líquido" value={money(dre?.lucro_liquido)} /><Card label="Margem líquida" value={percent(dre?.margem_liquida_percentual)} /><TabelaLancamentos lancamentos={lancamentos} /></section>;
+function Empresa({ dre, fluxo, lancamentos }) {
+  return <section className="grid"><Card label="Receita DRE" value={money(dre?.receita_bruta)} /><Card label="Entradas caixa" value={money(fluxo?.entradas)} /><Card label="Saídas caixa" value={money(fluxo?.saidas)} /><Card label="Saldo caixa" value={money(fluxo?.saldo_periodo)} /><Card label="Lucro líquido" value={money(dre?.lucro_liquido)} /><Card label="Margem líquida" value={percent(dre?.margem_liquida_percentual)} /><TabelaLancamentos lancamentos={lancamentos} /></section>;
+}
+
+function FluxoCaixa({ fluxo }) {
+  return <section className="grid"><Card label="Entradas" value={money(fluxo?.entradas)} /><Card label="Saídas" value={money(fluxo?.saidas)} /><Card label="Saldo do período" value={money(fluxo?.saldo_periodo)} /><Card label="Movimentos" value={fluxo?.movimentos?.length || 0} /><div className="panel"><h2>Fluxo por dia</h2><table><thead><tr><th>Data</th><th>Entradas</th><th>Saídas</th><th>Saldo</th></tr></thead><tbody>{(fluxo?.por_dia || []).map((item) => <tr key={item.data}><td>{item.data}</td><td>{money(item.entradas)}</td><td>{money(item.saidas)}</td><td>{money(item.saldo)}</td></tr>)}</tbody></table></div><div className="panel"><h2>Movimentações de caixa/banco</h2><table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Tipo</th><th>Valor</th></tr></thead><tbody>{(fluxo?.movimentos || []).map((item) => <tr key={item.id}><td>{item.data_movimento}</td><td>{item.descricao}</td><td>{item.categoria}</td><td>{item.tipo}</td><td>{money(item.valor)}</td></tr>)}</tbody></table></div></section>;
 }
 
 function Dre({ dre }) {
@@ -152,5 +165,5 @@ function Metas({ metas }) {
 }
 
 function TabelaLancamentos({ lancamentos }) {
-  return <div className="panel"><h2>Lançamentos</h2><table><thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th>Valor</th></tr></thead><tbody>{lancamentos.map((item) => <tr key={item.id}><td>{item.data_lancamento}</td><td>{item.descricao}</td><td>{item.tipo}</td><td>{money(item.valor)}</td></tr>)}</tbody></table></div>;
+  return <div className="panel"><h2>Lançamentos DRE</h2><table><thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th>Valor</th></tr></thead><tbody>{lancamentos.map((item) => <tr key={item.id}><td>{item.data_lancamento}</td><td>{item.descricao}</td><td>{item.tipo}</td><td>{money(item.valor)}</td></tr>)}</tbody></table></div>;
 }
