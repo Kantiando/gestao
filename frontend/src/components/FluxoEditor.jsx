@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import { money } from "../api.js";
 
 export function emptyMov(contaId = "") {
@@ -6,12 +7,49 @@ export function emptyMov(contaId = "") {
 }
 
 export function FluxoEditor({ dashboard, movimentos, contas, form, setForm, editId, setEditId, onSubmit, onDelete }) {
-  const fluxo = dashboard?.fluxo_caixa || {};
+  const [contaFiltro, setContaFiltro] = useState("");
   const update = (key, value) => setForm({ ...form, [key]: value });
+
+  const movimentosFiltrados = useMemo(() => {
+    if (!contaFiltro) return movimentos;
+    return movimentos.filter((m) => m.plano_conta_id === contaFiltro);
+  }, [movimentos, contaFiltro]);
+
+  const fluxo = useMemo(() => {
+    const entradas = movimentosFiltrados
+      .filter((m) => m.tipo === "entrada")
+      .reduce((soma, m) => soma + Number(m.valor || 0), 0);
+    const saidas = movimentosFiltrados
+      .filter((m) => m.tipo === "saida")
+      .reduce((soma, m) => soma + Number(m.valor || 0), 0);
+    return {
+      entradas,
+      saidas,
+      saldo_periodo: entradas - saidas,
+      quantidade: movimentosFiltrados.length,
+    };
+  }, [movimentosFiltrados]);
+
+  const contaSelecionada = contas.find((c) => c.id === contaFiltro);
+
   return <section className="grid">
     <article className="card"><span>Entradas</span><strong>{money(fluxo.entradas)}</strong></article>
     <article className="card"><span>Saídas</span><strong>{money(fluxo.saidas)}</strong></article>
     <article className="card"><span>Saldo</span><strong>{money(fluxo.saldo_periodo)}</strong></article>
+    <article className="card"><span>Lançamentos</span><strong>{fluxo.quantidade}</strong></article>
+
+    <div className="panel">
+      <h2>Filtro do fluxo de caixa</h2>
+      <div className="form-grid">
+        <select value={contaFiltro} onChange={(e) => setContaFiltro(e.target.value)}>
+          <option value="">Todas as contas</option>
+          {contas.map((c) => <option key={c.id} value={c.id}>{c.codigo} · {c.nome} → {c.dre_categoria}</option>)}
+        </select>
+        <button type="button" onClick={() => setContaFiltro("")}>Limpar filtro</button>
+      </div>
+      {contaSelecionada && <p>Mostrando apenas: <strong>{contaSelecionada.codigo} · {contaSelecionada.nome}</strong></p>}
+    </div>
+
     <div className="panel">
       <h2>{editId ? "Editar lançamento" : "Novo lançamento"}</h2>
       <form className="form-grid" onSubmit={onSubmit}>
@@ -28,7 +66,7 @@ export function FluxoEditor({ dashboard, movimentos, contas, form, setForm, edit
     <div className="panel">
       <h2>Lançamentos</h2>
       <table><thead><tr><th>Data</th><th>Descrição</th><th>Conta</th><th>DRE</th><th>Tipo</th><th>Valor</th><th>Ações</th></tr></thead><tbody>
-        {movimentos.map((m) => <tr key={m.id}><td>{m.data_movimento}</td><td>{m.descricao}</td><td>{m.conta}</td><td>{m.dre_categoria}</td><td>{m.tipo}</td><td>{money(m.valor)}</td><td><button onClick={() => { setEditId(m.id); setForm({ ...emptyMov(), ...m, valor: String(m.valor) }); }}>Editar</button><button onClick={() => onDelete(m.id)}>Remover</button></td></tr>)}
+        {movimentosFiltrados.map((m) => <tr key={m.id}><td>{m.data_movimento}</td><td>{m.descricao}</td><td>{m.conta}</td><td>{m.dre_categoria}</td><td>{m.tipo}</td><td>{money(m.valor)}</td><td><button onClick={() => { setEditId(m.id); setForm({ ...emptyMov(), ...m, valor: String(m.valor) }); }}>Editar</button><button onClick={() => onDelete(m.id)}>Remover</button></td></tr>)}
       </tbody></table>
     </div>
   </section>;
