@@ -13,8 +13,18 @@ function apiBaseUrl() {
 
 async function request(path) {
   const response = await fetch(`${apiBaseUrl()}${path}`);
-  if (!response.ok) throw new Error("Erro ao conectar com a API");
+  if (!response.ok) {
+    throw new Error(`API retornou ${response.status} em ${path}`);
+  }
   return response.json();
+}
+
+function apiErrorMessage(error) {
+  const detalhe = error?.message ? ` Detalhe: ${error.message}` : "";
+  if (typeof window !== "undefined" && window.location.hostname.includes("onrender.com")) {
+    return `API publicada ainda não está pronta ou está em versão antiga. Faça Deploy latest commit no serviço gestao-api.${detalhe}`;
+  }
+  return `Backend local não conectado em http://localhost:8000.${detalhe}`;
 }
 
 function money(value) {
@@ -51,7 +61,7 @@ export default function App() {
         setFluxoConsolidado(fluxoData);
         if (empresasData[0]) setEmpresaId(empresasData[0].id);
       } catch (error) {
-        setErro("Backend não conectado. Rode o FastAPI em http://localhost:8000.");
+        setErro(apiErrorMessage(error));
       }
     }
     load();
@@ -70,7 +80,7 @@ export default function App() {
         setPlanoContas(contasData);
         setLancamentos(lancamentosData);
       } catch (error) {
-        setErro("Não foi possível carregar os dados da empresa.");
+        setErro(apiErrorMessage(error));
       }
     }
     loadEmpresa();
