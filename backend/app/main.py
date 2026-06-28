@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 app = FastAPI(
     title="Gestão Empresarial API",
     description="Core inicial sem login, sem variáveis e sem banco externo.",
-    version="0.1.0",
+    version="0.2.0",
 )
 
 app.add_middleware(
@@ -47,6 +47,19 @@ class LancamentoCreate(BaseModel):
     observacao: str | None = None
 
 
+class MovimentacaoCaixaCreate(BaseModel):
+    data_movimento: str
+    tipo: str
+    descricao: str
+    valor: float = Field(gt=0)
+    origem: str = "manual"
+    banco: str | None = None
+    conta_bancaria: str | None = None
+    plano_conta_id: str | None = None
+    status: str = "confirmado"
+    observacao: str | None = None
+
+
 class MetaCreate(BaseModel):
     nome: str
     tipo_meta: str
@@ -58,6 +71,7 @@ class MetaCreate(BaseModel):
 empresas: dict[str, dict] = {}
 plano_contas: dict[str, dict] = {}
 lancamentos: dict[str, dict] = {}
+movimentacoes_caixa: dict[str, dict] = {}
 metas: dict[str, dict] = {}
 
 
@@ -83,6 +97,13 @@ def criar_lancamento_base(empresa_id: str, payload: LancamentoCreate) -> dict:
     item = payload.model_dump()
     item.update({"id": novo_id(), "empresa_id": empresa_id})
     lancamentos[item["id"]] = item
+    return item
+
+
+def criar_movimentacao_caixa_base(empresa_id: str, payload: MovimentacaoCaixaCreate) -> dict:
+    item = payload.model_dump()
+    item.update({"id": novo_id(), "empresa_id": empresa_id})
+    movimentacoes_caixa[item["id"]] = item
     return item
 
 
@@ -123,7 +144,7 @@ def seed() -> None:
         )
         contas_por_nome[nome] = conta
 
-    def add(nome_conta: str, descricao: str, tipo: str, valor: float) -> None:
+    def add_lancamento(nome_conta: str, descricao: str, tipo: str, valor: float) -> None:
         criar_lancamento_base(
             empresa_id,
             LancamentoCreate(
@@ -138,17 +159,47 @@ def seed() -> None:
             ),
         )
 
-    add("Vendas ColorGlass", "Receita junho/2025", "receita", 82379.72)
-    add("Insumos e acessórios", "Insumos junho/2025", "despesa", 13189.20)
-    add("Pintura", "Pintura junho/2025", "despesa", 10905.00)
-    add("Vidro", "Vidro junho/2025", "despesa", 9036.17)
-    add("Folha", "Folha junho/2025", "despesa", 9034.73)
-    add("Outros gastos", "Outros gastos junho/2025", "despesa", 4439.75)
-    add("Comissão", "Comissão junho/2025", "despesa", 2357.32)
-    add("Frete", "Frete junho/2025", "despesa", 2189.98)
-    add("Pró-labore", "Pró-labore junho/2025", "despesa", 2000.00)
-    add("Alumínio / Perfis", "Perfis junho/2025", "despesa", 1272.77)
-    add("Sistemas", "Sistemas junho/2025", "despesa", 414.00)
+    def add_caixa(data: str, nome_conta: str, descricao: str, tipo: str, valor: float) -> None:
+        criar_movimentacao_caixa_base(
+            empresa_id,
+            MovimentacaoCaixaCreate(
+                data_movimento=data,
+                tipo=tipo,
+                descricao=descricao,
+                valor=valor,
+                origem="manual",
+                banco="Banco exemplo",
+                conta_bancaria="Conta principal",
+                plano_conta_id=contas_por_nome[nome_conta]["id"],
+                status="confirmado",
+            ),
+        )
+
+    add_lancamento("Vendas ColorGlass", "Receita junho/2025", "receita", 82379.72)
+    add_lancamento("Insumos e acessórios", "Insumos junho/2025", "despesa", 13189.20)
+    add_lancamento("Pintura", "Pintura junho/2025", "despesa", 10905.00)
+    add_lancamento("Vidro", "Vidro junho/2025", "despesa", 9036.17)
+    add_lancamento("Folha", "Folha junho/2025", "despesa", 9034.73)
+    add_lancamento("Outros gastos", "Outros gastos junho/2025", "despesa", 4439.75)
+    add_lancamento("Comissão", "Comissão junho/2025", "despesa", 2357.32)
+    add_lancamento("Frete", "Frete junho/2025", "despesa", 2189.98)
+    add_lancamento("Pró-labore", "Pró-labore junho/2025", "despesa", 2000.00)
+    add_lancamento("Alumínio / Perfis", "Perfis junho/2025", "despesa", 1272.77)
+    add_lancamento("Sistemas", "Sistemas junho/2025", "despesa", 414.00)
+
+    add_caixa("2025-06-03", "Vendas ColorGlass", "Recebimentos de clientes", "entrada", 28000.00)
+    add_caixa("2025-06-10", "Vendas ColorGlass", "Recebimentos de clientes", "entrada", 21000.00)
+    add_caixa("2025-06-20", "Vendas ColorGlass", "Recebimentos de clientes", "entrada", 33379.72)
+    add_caixa("2025-06-05", "Insumos e acessórios", "Pagamento insumos", "saida", 13189.20)
+    add_caixa("2025-06-07", "Pintura", "Pagamento pintura", "saida", 10905.00)
+    add_caixa("2025-06-11", "Vidro", "Pagamento vidro", "saida", 9036.17)
+    add_caixa("2025-06-14", "Folha", "Pagamento folha", "saida", 9034.73)
+    add_caixa("2025-06-16", "Outros gastos", "Pagamento outros gastos", "saida", 4439.75)
+    add_caixa("2025-06-17", "Comissão", "Pagamento comissão", "saida", 2357.32)
+    add_caixa("2025-06-21", "Frete", "Pagamento frete", "saida", 2189.98)
+    add_caixa("2025-06-25", "Pró-labore", "Pagamento pró-labore", "saida", 2000.00)
+    add_caixa("2025-06-26", "Alumínio / Perfis", "Pagamento perfis", "saida", 1272.77)
+    add_caixa("2025-06-28", "Sistemas", "Pagamento sistemas", "saida", 414.00)
 
     criar_meta_base(empresa_id, MetaCreate(nome="Faturamento mensal", tipo_meta="receita", valor_meta=100000, periodo="2025-06"))
     criar_meta_base(empresa_id, MetaCreate(nome="Lucro líquido mínimo", tipo_meta="lucro", valor_meta=15000, periodo="2025-06"))
@@ -162,6 +213,12 @@ def empresa_ou_404(empresa_id: str) -> dict:
     if not empresa:
         raise HTTPException(status_code=404, detail="Empresa não encontrada")
     return empresa
+
+
+def conta_ou_none(plano_conta_id: str | None) -> dict | None:
+    if not plano_conta_id:
+        return None
+    return plano_contas.get(plano_conta_id)
 
 
 def calcular_dre(empresa_id: str | None, competencia: str) -> dict:
@@ -217,9 +274,73 @@ def calcular_dre(empresa_id: str | None, competencia: str) -> dict:
     }
 
 
+def calcular_fluxo_caixa(empresa_id: str | None, data_inicio: str, data_fim: str) -> dict:
+    movimentos = []
+    totais_por_dia = defaultdict(lambda: {"entradas": 0.0, "saidas": 0.0, "saldo": 0.0})
+    totais_por_categoria = defaultdict(lambda: {"entradas": 0.0, "saidas": 0.0, "saldo": 0.0})
+
+    entradas = 0.0
+    saidas = 0.0
+
+    for movimento in movimentacoes_caixa.values():
+        if empresa_id and movimento["empresa_id"] != empresa_id:
+            continue
+        if movimento["data_movimento"] < data_inicio or movimento["data_movimento"] > data_fim:
+            continue
+
+        conta = conta_ou_none(movimento.get("plano_conta_id"))
+        categoria = conta["nome"] if conta else "Sem categoria"
+        valor = float(movimento["valor"])
+        tipo = movimento["tipo"]
+
+        if tipo == "entrada":
+            entradas += valor
+            totais_por_dia[movimento["data_movimento"]]["entradas"] += valor
+            totais_por_categoria[categoria]["entradas"] += valor
+        else:
+            saidas += valor
+            totais_por_dia[movimento["data_movimento"]]["saidas"] += valor
+            totais_por_categoria[categoria]["saidas"] += valor
+
+        movimentos.append({**movimento, "categoria": categoria})
+
+    for item in totais_por_dia.values():
+        item["saldo"] = item["entradas"] - item["saidas"]
+        item["entradas"] = round(item["entradas"], 2)
+        item["saidas"] = round(item["saidas"], 2)
+        item["saldo"] = round(item["saldo"], 2)
+
+    for item in totais_por_categoria.values():
+        item["saldo"] = item["entradas"] - item["saidas"]
+        item["entradas"] = round(item["entradas"], 2)
+        item["saidas"] = round(item["saidas"], 2)
+        item["saldo"] = round(item["saldo"], 2)
+
+    movimentos_ordenados = sorted(movimentos, key=lambda item: item["data_movimento"], reverse=True)
+
+    return {
+        "empresa_id": empresa_id,
+        "data_inicio": data_inicio,
+        "data_fim": data_fim,
+        "entradas": round(entradas, 2),
+        "saidas": round(saidas, 2),
+        "saldo_periodo": round(entradas - saidas, 2),
+        "movimentos": movimentos_ordenados,
+        "por_dia": [
+            {"data": data, **valores}
+            for data, valores in sorted(totais_por_dia.items())
+        ],
+        "por_categoria": [
+            {"categoria": categoria, **valores}
+            for categoria, valores in sorted(totais_por_categoria.items())
+        ],
+    }
+
+
 def dashboard_empresa(empresa_id: str, competencia: str) -> dict:
     empresa = empresa_ou_404(empresa_id)
     dre = calcular_dre(empresa_id, competencia)
+    fluxo = calcular_fluxo_caixa(empresa_id, f"{competencia}-01", f"{competencia}-31")
     metas_empresa = [m for m in metas.values() if m["empresa_id"] == empresa_id and m["periodo"] == competencia]
 
     metas_resumo = []
@@ -231,11 +352,13 @@ def dashboard_empresa(empresa_id: str, competencia: str) -> dict:
             realizado = dre["lucro_liquido"]
         elif meta["tipo_meta"] == "margem":
             realizado = dre["margem_liquida_percentual"]
+        elif meta["tipo_meta"] == "caixa":
+            realizado = fluxo["saldo_periodo"]
 
         progresso = 0 if meta["valor_meta"] == 0 else min((realizado / meta["valor_meta"]) * 100, 999)
         metas_resumo.append({**meta, "realizado": round(realizado, 2), "progresso": round(progresso, 2)})
 
-    return {"empresa": empresa, "competencia": competencia, "dre": dre, "metas": metas_resumo}
+    return {"empresa": empresa, "competencia": competencia, "dre": dre, "fluxo_caixa": fluxo, "metas": metas_resumo}
 
 
 @app.get("/")
@@ -296,6 +419,51 @@ def criar_lancamento(empresa_id: str, payload: LancamentoCreate) -> dict:
     if not conta or conta["empresa_id"] != empresa_id:
         raise HTTPException(status_code=400, detail="Conta inválida para esta empresa")
     return criar_lancamento_base(empresa_id, payload)
+
+
+@app.get("/empresas/{empresa_id}/movimentacoes-caixa")
+def listar_movimentacoes_caixa(
+    empresa_id: str,
+    data_inicio: str | None = Query(default=None),
+    data_fim: str | None = Query(default=None),
+) -> list[dict]:
+    empresa_ou_404(empresa_id)
+    itens = [m for m in movimentacoes_caixa.values() if m["empresa_id"] == empresa_id]
+    if data_inicio:
+        itens = [m for m in itens if m["data_movimento"] >= data_inicio]
+    if data_fim:
+        itens = [m for m in itens if m["data_movimento"] <= data_fim]
+    return sorted(itens, key=lambda item: item["data_movimento"], reverse=True)
+
+
+@app.post("/empresas/{empresa_id}/movimentacoes-caixa", status_code=201)
+def criar_movimentacao_caixa(empresa_id: str, payload: MovimentacaoCaixaCreate) -> dict:
+    empresa_ou_404(empresa_id)
+    if payload.tipo not in {"entrada", "saida"}:
+        raise HTTPException(status_code=400, detail="Tipo deve ser entrada ou saida")
+    if payload.plano_conta_id:
+        conta = plano_contas.get(payload.plano_conta_id)
+        if not conta or conta["empresa_id"] != empresa_id:
+            raise HTTPException(status_code=400, detail="Conta inválida para esta empresa")
+    return criar_movimentacao_caixa_base(empresa_id, payload)
+
+
+@app.get("/empresas/{empresa_id}/fluxo-caixa")
+def fluxo_caixa_empresa(
+    empresa_id: str,
+    data_inicio: str = Query(default="2025-06-01"),
+    data_fim: str = Query(default="2025-06-30"),
+) -> dict:
+    empresa_ou_404(empresa_id)
+    return calcular_fluxo_caixa(empresa_id, data_inicio, data_fim)
+
+
+@app.get("/fluxo-caixa/consolidado")
+def fluxo_caixa_consolidado(
+    data_inicio: str = Query(default="2025-06-01"),
+    data_fim: str = Query(default="2025-06-30"),
+) -> dict:
+    return calcular_fluxo_caixa(None, data_inicio, data_fim)
 
 
 @app.get("/empresas/{empresa_id}/dre")
