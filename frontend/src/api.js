@@ -6,10 +6,17 @@ export function apiBaseCandidates() {
   if (!window.location.hostname.includes("onrender.com")) return ["http://localhost:8000"];
 
   const host = window.location.hostname;
-  const candidates = ["https://gestao-api.onrender.com"];
+  const candidates = [
+    "https://kantiando-gestao-api.onrender.com",
+    "https://gestao-api.onrender.com"
+  ];
+
+  if (host.includes("kantiando-gestao-web")) {
+    candidates.unshift(`https://${host.replace("kantiando-gestao-web", "kantiando-gestao-api")}`);
+  }
 
   if (host.includes("gestao-web")) {
-    candidates.unshift(`https://${host.replace("gestao-web", "gestao-api")}`);
+    candidates.push(`https://${host.replace("gestao-web", "gestao-api")}`);
   }
 
   const saved = window.localStorage.getItem("GESTAO_API_URL");
