@@ -9,12 +9,28 @@ A primeira versão não tem login, variáveis de ambiente ou Supabase. O foco é
 - Gestão por empresa
 - Visão geral consolidada
 - Plano de contas
-- Lançamentos financeiros
+- Lançamentos financeiros para DRE
+- Movimentações de caixa/banco
+- Fluxo de caixa
 - DRE gerencial
 - Metas
 - Dashboard inicial
 
 A empresa inicial cadastrada em memória é a ColorGlass.
+
+## Diferença entre DRE e fluxo de caixa
+
+A DRE trabalha por competência. Ela responde se a empresa deu lucro ou prejuízo no período gerencial.
+
+O fluxo de caixa trabalha por data real de entrada e saída no banco/caixa. Ele será alimentado futuramente por importação bancária, conciliação ou integração com banco.
+
+Exemplo:
+
+```txt
+Venda feita em junho, recebida em julho:
+- entra na DRE de junho
+- entra no fluxo de caixa de julho
+```
 
 ## Estrutura
 
@@ -56,6 +72,20 @@ Frontend:
 
 ```txt
 http://localhost:5173
+```
+
+## Rotas principais do core
+
+```txt
+/empresas
+/empresas/{empresa_id}/dashboard
+/empresas/{empresa_id}/plano-contas
+/empresas/{empresa_id}/lancamentos
+/empresas/{empresa_id}/dre
+/empresas/{empresa_id}/movimentacoes-caixa
+/empresas/{empresa_id}/fluxo-caixa
+/dre/consolidado
+/fluxo-caixa/consolidado
 ```
 
 ## Deploy Render
