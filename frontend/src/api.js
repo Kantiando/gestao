@@ -1,6 +1,6 @@
-export const competencia = "2025-06";
-export const dataInicio = "2025-06-01";
-export const dataFim = "2025-06-30";
+export const competencia = "2026-06";
+export const dataInicio = "2026-03-31";
+export const dataFim = "2026-06-26";
 
 export function apiBaseUrl() {
   if (!window.location.hostname.includes("onrender.com")) {
