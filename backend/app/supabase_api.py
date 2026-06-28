@@ -7,14 +7,12 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 from fastapi import FastAPI, HTTPException, Query
-from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 SUPABASE_URL = getenv("SUPABASE_URL", "https://jgdqwebhjfcrhrygxtul.supabase.co")
 SUPABASE_KEY = getenv("SUPABASE_KEY", "sb_publishable_9uEjN9A-INLXDhObIHKAAw_Rdew6XLX")
 
-app = FastAPI(title="Gestao Empresarial API", version="0.4.1-supabase")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+app = FastAPI(title="Gestao Empresarial API", version="0.4.2-no-cors")
 
 class MovimentoPayload(BaseModel):
     data_movimento: str
@@ -137,11 +135,11 @@ def dre(empresa_id, competencia):
     return {"empresa_id": empresa_id, "competencia": competencia, "receita_bruta": round(receita, 2), "custos_variaveis": round(custos, 2), "lucro_bruto": round(receita - custos, 2), "despesas_operacionais": round(despesas, 2), "resultado_operacional": round(lucro, 2), "lucro_liquido": round(lucro, 2), "investimentos": round(investimentos, 2), "margem_liquida_percentual": 0 if receita == 0 else round(lucro / receita * 100, 2), "linhas_customizadas": linhas}
 
 @app.get("/")
-def root(): return {"app": "gestao-api", "version": "0.4.1-supabase"}
+def root(): return {"app": "gestao-api", "version": "0.4.2-no-cors"}
 @app.get("/health")
 def health(): return {"status": "ok"}
 @app.get("/version")
-def version(): return {"app": "gestao-api", "version": "0.4.1-supabase", "database": "supabase"}
+def version(): return {"app": "gestao-api", "version": "0.4.2-no-cors", "database": "supabase", "cors": "removed"}
 @app.get("/empresas")
 def get_empresas(): return rest("empresas?" + q({"select": "*", "ativa": "eq.true", "order": "nome.asc"}))
 @app.get("/empresas/{empresa_id}/dashboard")
