@@ -1,16 +1,16 @@
 services:
   - type: web
-    name: gestao-api
+    name: kantiando-gestao-api
     runtime: python
     rootDir: backend
     plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    startCommand: python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     autoDeployTrigger: commit
 
   - type: web
-    name: gestao-web
+    name: kantiando-gestao-web
     runtime: static
     rootDir: frontend
     plan: free
