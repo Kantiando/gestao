@@ -5,6 +5,8 @@ import { PlanoEditor, emptyConta } from "./components/PlanoEditor.jsx";
 import { DreEditor, emptyDre } from "./components/DreEditor.jsx";
 import AnalyticsView from "./components/AnalyticsView.jsx";
 
+const EMPRESA_FALLBACK = { id: "17363fdc-1af3-422c-b3c9-663988f3aac9", nome: "ColorGlass", apelido: "ColorGlass", ativa: true };
+
 export default function AppManage() {
   const [view, setView] = useState("fluxo");
   const [empresas, setEmpresas] = useState([]);
@@ -26,9 +28,20 @@ export default function AppManage() {
   const empresaAtual = useMemo(() => empresas.find((e) => e.id === empresaId), [empresas, empresaId]);
 
   async function loadBase() {
-    const data = await api("/empresas");
-    setEmpresas(data);
-    if (!empresaId && data[0]) setEmpresaId(data[0].id);
+    try {
+      const data = await api("/empresas");
+      const lista = Array.isArray(data) && data.length ? data : [EMPRESA_FALLBACK];
+      setEmpresas(lista);
+      const id = empresaId || lista[0].id;
+      setEmpresaId(id);
+      await loadEmpresa(id);
+      if (!Array.isArray(data) || !data.length) setMsg("Empresa padrão ColorGlass carregada por fallback");
+    } catch (e) {
+      setEmpresas([EMPRESA_FALLBACK]);
+      setEmpresaId(EMPRESA_FALLBACK.id);
+      await loadEmpresa(EMPRESA_FALLBACK.id);
+      setMsg("Empresa padrão ColorGlass carregada por fallback");
+    }
   }
 
   async function loadEmpresa(id = empresaId) {
@@ -43,10 +56,11 @@ export default function AppManage() {
     setDashboard(dash); setCategorias(cat); setContas(pcs); setMovimentos(movs); setDre(dreData);
     if (!movForm.plano_conta_id && pcs[0]) setMovForm((old) => ({ ...old, plano_conta_id: pcs[0].id }));
     if (!contaForm.dre_categoria_id && cat[0]) setContaForm((old) => ({ ...old, dre_categoria_id: cat[0].id }));
+    setErro("");
   }
 
   useEffect(() => { loadBase().catch((e) => setErro(e.message)); }, []);
-  useEffect(() => { loadEmpresa().catch((e) => setErro(e.message)); }, [empresaId]);
+  useEffect(() => { if (empresaId) loadEmpresa(empresaId).catch((e) => setErro(e.message)); }, [empresaId]);
 
   async function refresh(text = "Atualizado") { await loadEmpresa(); setMsg(text); setErro(""); }
 
